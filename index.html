@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Giffgaff eSIM工具 - 轻松管理您的eSIM，支持OAuth登录和快速激活">
+    <title>Giffgaff eSIM Tool</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 384 512%22><path fill=%22%23000000%22 d=%22M0 64v384c0 35.25 28.75 64 64 64h256c35.25 0 64-28.75 64-64V128l-128-128H64C28.75 0 0 28.75 0 64zM224 256H160V192h64V256zM320 256h-64V192h32c17.75 0 32 14.25 32 32V256zM256 384h64v32c0 17.75-14.25 32-32 32h-32V384zM160 384h64v64H160V384zM64 384h64v64H96c-17.75 0-32-14.25-32-32V384zM64 288h256v64H64V288zM64 224c0-17.75 14.25-32 32-32h32v64H64V224z%22/></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --giffgaff-yellow: #fcc31e;
+            --giffgaff-black: #000000;
+            --giffgaff-dark: #1a1a1a;
+            --bg-primary: #f5f5f5;
+            --bg-card: #ffffff;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666666;
+            --border-color: #dbdbdb;
+            --success: #10b981;
+            --warning: #fcc31e;
+            --error: #ef4444;
+            --shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --shadow-lg: 0 10px 30px rgba(0,0,0,0.12);
+            --radius: 24px;
+            --radius-sm: 12px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+                         'Microsoft YaHei', sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 0;
+        }
+
+        /* 顶部导航栏 */
+        .navbar {
+            background: var(--giffgaff-black);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            margin-bottom: 20px;
+        }
+
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .navbar-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            color: #ffffff;
+            font-weight: 500;
+            font-size: 14px;
+            transition: var(--transition);
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+
+        .navbar-link:hover {
+            color: var(--giffgaff-yellow);
+            background: rgba(252, 195, 30, 0.1);
+        }
+
+        .navbar-link svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .navbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .site-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 20px 20px;
+        }
+
+        /* 头部 */
+        .header {
+            text-align: center;
+            padding: 40px 20px;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            font-size: 64px;
+            margin-bottom: 16px;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+        }
+
+        .logo svg {
+            width: 64px;
+            height: 64px;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--giffgaff-black);
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+
+        /* 卡片 */
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius-sm);
+            padding: 32px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+            border-color: var(--giffgaff-yellow);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .card-header .icon {
+            font-size: 24px;
+        }
+
+        .card-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--giffgaff-black);
+        }
+
+        /* 按钮 */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 28px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--giffgaff-yellow);
+            color: var(--giffgaff-black);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: var(--radius);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            background: #ffd54f;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--text-primary);
+            border: 2px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--giffgaff-black);
+            color: var(--giffgaff-black);
+            background: var(--bg-primary);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 输入框 */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .form-input,
+        .form-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 15px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--giffgaff-yellow);
+            box-shadow: 0 0 0 3px rgba(252, 195, 30, 0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        /* 选项卡 */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            background: var(--bg-primary);
+            padding: 6px;
+            border-radius: 10px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px 20px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+            color: var(--text-secondary);
+        }
+
+        .tab.active {
+            background: var(--giffgaff-black);
+            color: #ffffff;
+            box-shadow: var(--shadow);
+        }
+
+        /* 进度步骤 */
+        .steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            padding: 0 20px;
+        }
+
+        .step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+
+        .step::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            right: -50%;
+            height: 2px;
+            background: var(--border-color);
+            z-index: -1;
+        }
+
+        .step:last-child::before {
+            display: none;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 8px;
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .step.active .step-number {
+            background: var(--giffgaff-yellow);
+            border-color: var(--giffgaff-yellow);
+            color: var(--giffgaff-black);
+        }
+
+        .step.completed .step-number {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .step-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* 通知 */
+        .alert {
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .alert-info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e40af;
+        }
+
+        .alert-success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+        }
+
+        .alert-warning {
+            background: #fef3c7;
+            border: 1px solid #fde68a;
+            color: #92400e;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+        }
+
+        /* 推广横幅 */
+        .promo-banner {
+            background: var(--giffgaff-yellow);
+            color: var(--giffgaff-black);
+            padding: 16px 24px;
+            border-radius: var(--radius);
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .promo-icon {
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+
+        .promo-content {
+            flex: 1;
+        }
+
+        .promo-content p {
+            margin: 0 0 8px 0;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .promo-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--giffgaff-black);
+            color: #ffffff;
+            padding: 8px 20px;
+            border-radius: var(--radius);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: var(--transition);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .promo-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            background: var(--giffgaff-dark);
+        }
+
+        /* 时间提醒 */
+        .time-alert {
+            padding: 16px 20px;
+            border-radius: var(--radius);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: start;
+            gap: 12px;
+            border-left: 4px solid;
+        }
+
+        .time-alert.ok {
+            background: #f0fdf4;
+            border-color: var(--success);
+            color: #166534;
+        }
+
+        .time-alert.warning {
+            background: #fef3c7;
+            border-color: var(--warning);
+            color: #92400e;
+        }
+
+        .time-alert-icon {
+            font-size: 32px;
+            margin-top: 2px;
+        }
+
+        .time-alert-content {
+            flex: 1;
+        }
+
+        .time-alert-title {
+            font-weight: 700;
+            margin-bottom: 8px;
+            font-size: 20px;
+        }
+
+        .time-alert-text {
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        .time-info {
+            display: flex;
+            gap: 20px;
+            margin-top: 12px;
+            font-size: 15px;
+        }
+
+        .time-info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .time-info-item strong {
+            font-size: 16px;
+        }
+
+        #time-status strong {
+            font-size: 18px;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-weight: 700;
+        }
+
+        #time-status strong[style*="success"] {
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        #time-status strong[style*="warning"] {
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius);
+            padding: 32px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalIn 0.3s ease-out;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-icon {
+            font-size: 48px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .modal-text {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-buttons .btn {
+            flex: 1;
+        }
+
+        /* 隐藏元素 */
+        .hidden {
+            display: none !important;
+        }
+
+        /* 加载动画 */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 12px 16px;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .navbar-left {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .site-name {
+                font-size: 16px;
+            }
+
+            .header {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .card {
+                padding: 24px;
+            }
+
+            .steps {
+                display: none;
+            }
+
+            .promo-banner {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .time-info {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-left">
+            <span class="site-name">Giffgaff eSIM Tool</span>
+        </div>
+        <div class="navbar-right">
+            <a href="https://blog.nbvil.com/tags/giffgaff/" target="_blank" class="navbar-link">
+                📖 查看教程
+            </a>
+            <a href="https://github.com/sindricn/giffgaff" target="_blank" class="navbar-link">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                GitHub
+            </a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- 头部 -->
+        <div class="header">
+            <div class="logo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512">
+                    <path fill="#000000" d="M0 64v384c0 35.25 28.75 64 64 64h256c35.25 0 64-28.75 64-64V128l-128-128H64C28.75 0 0 28.75 0 64zM224 256H160V192h64V256zM320 256h-64V192h32c17.75 0 32 14.25 32 32V256zM256 384h64v32c0 17.75-14.25 32-32 32h-32V384zM160 384h64v64H160V384zM64 384h64v64H96c-17.75 0-32-14.25-32-32V384zM64 288h256v64H64V288zM64 224c0-17.75 14.25-32 32-32h32v64H64V224z"/>
+                </svg>
+            </div>
+            <h1>Giffgaff eSIM Tool</h1>
+            <p class="subtitle">轻松管理您的eSIM服务</p>
+        </div>
+
+        <!-- 推广横幅 -->
+        <div class="promo-banner">
+            <div class="promo-icon">🎁</div>
+            <div class="promo-content">
+                <p>实体SIM卡专享福利</p>
+                <small>通过邀请链接申请实体 SIM 并注册激活，可额外获得 5 英镑话费奖励</small>
+            </div>
+            <a href="http://www.giffgaff.com/orders/affiliate/esind38_1680939345895"
+               target="_blank"
+               class="promo-link">
+                立即领取 →
+            </a>
+        </div>
+
+        <!-- 服务时间提醒 -->
+        <div id="time-alert" class="time-alert warning">
+            <div class="time-alert-icon">⏰</div>
+            <div class="time-alert-content">
+                <div class="time-alert-title">服务时间提醒</div>
+                <div class="time-alert-text">
+                    <strong>官方 eSIM 切换服务时间为上午 4:30 至晚上 9:30</strong><br>
+                    <small style="opacity: 0.9;">（英国时间 04:30 - 21:30，自动识别夏令时/冬令时）</small>
+                </div>
+                <div class="time-info">
+                    <div class="time-info-item">
+                        <span>🇨🇳 北京时间:</span>
+                        <strong id="beijing-time">--:--</strong>
+                    </div>
+                    <div class="time-info-item">
+                        <span>🇬🇧 英国时间:</span>
+                        <strong id="uk-time">--:--</strong>
+                    </div>
+                    <div class="time-info-item" id="time-status">
+                        <span>状态:</span>
+                        <strong>检查中...</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 进度步骤 -->
+        <div class="steps">
+            <div class="step active" data-step="1">
+                <div class="step-number">1</div>
+                <div class="step-label">登录</div>
+            </div>
+            <div class="step" data-step="2">
+                <div class="step-number">2</div>
+                <div class="step-label">验证</div>
+            </div>
+            <div class="step" data-step="3">
+                <div class="step-number">3</div>
+                <div class="step-label">申请</div>
+            </div>
+            <div class="step" data-step="4">
+                <div class="step-number">4</div>
+                <div class="step-label">完成</div>
+            </div>
+        </div>
+
+        <!-- 步骤1: 登录 -->
+        <div id="step-1" class="card">
+            <div class="card-header">
+                <span class="icon">🔐</span>
+                <h2>选择登录方式</h2>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" data-tab="oauth">OAuth登录</div>
+                <div class="tab" data-tab="cookie">Cookie登录</div>
+            </div>
+
+            <!-- OAuth登录 -->
+            <div id="oauth-tab" class="tab-content">
+                <div class="alert alert-info">
+                    <span>ℹ️</span>
+                    <span>推荐使用OAuth登录，更安全可靠</span>
+                </div>
+
+                <button class="btn btn-primary" id="oauth-login-btn">
+                    <span>开始OAuth登录</span>
+                </button>
+
+                <div id="oauth-callback-section" class="hidden" style="margin-top: 20px;">
+                    <!-- 获取教程 -->
+                    <details style="margin-bottom: 20px; padding: 16px; background: #f8f9fa; border-radius: 8px;">
+                        <summary style="cursor: pointer; font-weight: 600; color: var(--giffgaff-orange);">
+                            📖 如何获取回调URL？（点击展开详细教程）
+                        </summary>
+                        <div style="margin-top: 12px; line-height: 1.8;">
+                            <p style="margin-bottom: 12px;"><strong>方法一：使用开发者工具（推荐）</strong></p>
+                            <ol style="margin-left: 20px; margin-bottom: 16px;">
+                                <li>在授权页面<strong>按 F12</strong> 打开开发者工具</li>
+                                <li>切换到 <strong>"Network"（网络）</strong> 标签</li>
+                                <li>勾选 <strong>"Preserve log"（保留日志）</strong></li>
+                                <li>完成授权后，在列表中查找失败的请求</li>
+                                <li>找到以 <code style="background: #e9ecef; padding: 2px 6px; border-radius: 4px;">giffgaff://auth/callback/</code> 开头的URL</li>
+                                <li>右键该请求 → <strong>Copy → Copy URL</strong></li>
+                                <li>粘贴到下方输入框</li>
+                            </ol>
+
+                            <p style="margin-bottom: 12px;"><strong>方法二：使用控制台脚本（更简单）</strong></p>
+                            <ol style="margin-left: 20px; margin-bottom: 16px;">
+                                <li>在授权页面按 <strong>F12</strong> 打开控制台</li>
+                                <li>切换到 <strong>"Console"（控制台）</strong> 标签</li>
+                                <li>粘贴以下代码并回车：</li>
+                            </ol>
+                            <pre id="oauth-script" style="background: #2d3436; color: #dfe6e9; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; margin-bottom: 8px;">// 监听回调URL
+window.addEventListener('beforeunload', (e) => {
+  if (e.target.activeElement?.href?.startsWith('giffgaff://')) {
+    const url = e.target.activeElement.href;
+    console.log('🎉 回调URL:', url);
+    navigator.clipboard.writeText(url);
+    alert('✅ 回调URL已复制到剪贴板！');
+  }
+});</pre>
+                            <button class="btn btn-secondary" style="font-size: 13px;" id="copy-oauth-script">
+                                📋 复制脚本
+                            </button>
+
+                            <div style="margin-top: 16px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                                <strong>💡 提示：</strong>URL 格式示例<br>
+                                <code style="background: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; display: inline-block; margin-top: 4px;">
+                                    giffgaff://auth/callback/?code=ABC123XYZ&state=random456
+                                </code>
+                            </div>
+                        </div>
+                    </details>
+
+                    <div class="form-group">
+                        <label class="form-label">回调URL</label>
+                        <textarea id="callback-url" class="form-textarea"
+                                  placeholder="粘贴以 giffgaff://auth/callback/ 开头的完整URL"></textarea>
+                    </div>
+                    <button class="btn btn-primary" id="process-callback-btn">
+                        <span>处理回调</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cookie登录 -->
+            <div id="cookie-tab" class="tab-content hidden">
+                <div class="alert alert-warning">
+                    <span>⚠️</span>
+                    <span>请确保从官方网站获取Cookie</span>
+                </div>
+
+                <!-- Cookie 获取教程 -->
+                <details style="margin-bottom: 20px; padding: 16px; background: #f8f9fa; border-radius: 8px;">
+                    <summary style="cursor: pointer; font-weight: 600; color: var(--giffgaff-orange);">
+                        📖 如何获取Cookie？（点击展开详细教程）
+                    </summary>
+                    <div style="margin-top: 12px; line-height: 1.8;">
+                        <p style="margin-bottom: 12px;"><strong>方法一：使用自动脚本（最简单）✨</strong></p>
+                        <ol style="margin-left: 20px; margin-bottom: 16px;">
+                            <li>访问 <a href="https://www.giffgaff.com" target="_blank" style="color: var(--giffgaff-orange); font-weight: 600;">www.giffgaff.com</a> 并登录</li>
+                            <li>按 <strong>F12</strong> 打开开发者工具</li>
+                            <li>切换到 <strong>"Console"（控制台）</strong> 标签</li>
+                            <li>粘贴以下代码并按回车：</li>
+                        </ol>
+                        <pre id="cookie-script" style="background: #2d3436; color: #dfe6e9; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; margin-bottom: 8px;">// 自动获取并复制 Cookie
+(function() {
+  const cookies = document.cookie;
+  if (!cookies) {
+    alert('❌ 未找到Cookie，请确保已登录 Giffgaff');
+    return;
+  }
+  console.log('🍪 Cookie内容:', cookies);
+  navigator.clipboard.writeText(cookies)
+    .then(() => alert('✅ Cookie已复制到剪贴板！'))
+    .catch(() => {
+      console.log('请手动复制以下内容:');
+      console.log(cookies);
+    });
+})();</pre>
+                        <button class="btn btn-secondary" style="font-size: 13px;" id="copy-cookie-script">
+                            📋 复制脚本
+                        </button>
+
+                        <div style="margin-top: 20px; padding-top: 16px; border-top: 2px solid #dee2e6;">
+                            <p style="margin-bottom: 12px;"><strong>方法二：手动复制（适合高级用户）</strong></p>
+                            <ol style="margin-left: 20px; margin-bottom: 16px;">
+                                <li>访问 <a href="https://www.giffgaff.com" target="_blank" style="color: var(--giffgaff-orange); font-weight: 600;">www.giffgaff.com</a> 并登录</li>
+                                <li>按 <strong>F12</strong> 打开开发者工具</li>
+                                <li>切换到 <strong>"Application"（应用）</strong> 或 <strong>"Storage"（存储）</strong> 标签</li>
+                                <li>在左侧展开 <strong>Cookies</strong></li>
+                                <li>点击 <strong>https://www.giffgaff.com</strong></li>
+                                <li>复制所有Cookie，格式为：<code style="background: #e9ecef; padding: 2px 6px;">name1=value1; name2=value2</code></li>
+                            </ol>
+                        </div>
+
+                        <div style="margin-top: 16px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                            <strong>💡 提示：</strong><br>
+                            • Cookie 通常 24-48 小时过期，需要定期更新<br>
+                            • 请在可信设备上使用，不要泄露给他人<br>
+                            • 本工具不会存储您的 Cookie
+                        </div>
+
+                        <div style="margin-top: 16px; padding: 12px; background: #f8d7da; border-left: 4px solid #dc3545; border-radius: 4px;">
+                            <strong>⚠️ 安全提醒：</strong><br>
+                            Cookie 相当于您的登录凭证，请妥善保管，不要分享给他人！
+                        </div>
+                    </div>
+                </details>
+
+                <div class="form-group">
+                    <label class="form-label">Cookie字符串</label>
+                    <textarea id="cookie-input" class="form-textarea"
+                              placeholder="粘贴从 www.giffgaff.com 获取的完整Cookie字符串"></textarea>
+                </div>
+                <button class="btn btn-primary" id="verify-cookie-btn">
+                    <span>验证Cookie</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 步骤2: MFA验证 -->
+        <div id="step-2" class="card hidden">
+            <div class="card-header">
+                <span class="icon">📧</span>
+                <h2>验证身份</h2>
+            </div>
+            <div class="form-group">
+                <label class="form-label">验证方式</label>
+                <select id="mfa-channel" class="form-input">
+                    <option value="EMAIL">邮箱验证码</option>
+                    <option value="TEXT">短信验证码</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" id="send-mfa-btn">
+                <span>发送验证码</span>
+            </button>
+            <div id="mfa-code-section" class="hidden" style="margin-top: 20px;">
+                <div class="form-group">
+                    <label class="form-label">验证码</label>
+                    <input type="text" id="mfa-code" class="form-input"
+                           placeholder="输入6位验证码" maxlength="6">
+                </div>
+                <button class="btn btn-primary" id="verify-mfa-btn">
+                    <span>验证</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 步骤3: 申请eSIM -->
+        <div id="step-3" class="card hidden">
+            <div class="card-header">
+                <span class="icon">📲</span>
+                <h2>申请eSIM</h2>
+            </div>
+            <p style="margin-bottom: 20px; color: var(--text-secondary);">
+                点击下方按钮开始申请您的eSIM
+            </p>
+            <button class="btn btn-primary" id="request-esim-btn">
+                <span>申请eSIM</span>
+            </button>
+        </div>
+
+        <!-- 步骤4: 完成 -->
+        <div id="step-4" class="card hidden">
+            <div class="card-header">
+                <span class="icon">✅</span>
+                <h2>eSIM信息</h2>
+            </div>
+            <div class="alert alert-success">
+                <span>✓</span>
+                <span>eSIM申请成功！</span>
+            </div>
+            <div id="qrcode-container" style="text-align: center; margin: 30px 0;">
+                <!-- 二维码将在这里显示 -->
+            </div>
+            <div id="esim-info" style="margin-top: 20px;">
+                <!-- eSIM详细信息将在这里显示 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 时间警告模态框 -->
+    <div id="time-warning-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-icon">⚠️</div>
+            <div class="modal-title">服务时间外提醒</div>
+            <div class="modal-text">
+                当前不在 Giffgaff 服务时间内（英国时间 04:30 - 21:30）。<br>
+                <br>
+                <strong>如果继续操作，可能会遇到：</strong><br>
+                • 申请失败<br>
+                • 激活延迟<br>
+                • 需要重新提交<br>
+                <br>
+                建议在服务时间内操作以获得最佳体验。
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" id="modal-cancel">稍后再试</button>
+                <button class="btn btn-primary" id="modal-continue">仍然继续</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/app.js"></script>
+</body>
+</html>

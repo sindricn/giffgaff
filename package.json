@@ -1,0 +1,29 @@
+{
+  "name": "giffgaff-esim-cf",
+  "version": "2.0.0",
+  "description": "Giffgaff eSIM工具 - Cloudflare版本",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "serve": "npx http-server . -p 3000 -o"
+  },
+  "keywords": [
+    "esim",
+    "giffgaff",
+    "cloudflare",
+    "workers"
+  ],
+  "author": "Sindri",
+  "contributors": [
+    {
+      "name": "Silentely",
+      "url": "https://github.com/Silentely"
+    }
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sindricn/giffgaff.git"
+  },
+  "homepage": "https://github.com/sindricn/giffgaff#readme"
+}

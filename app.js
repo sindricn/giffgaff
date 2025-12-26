@@ -27,6 +27,7 @@ class StateManager {
         this.state = this.loadFromStorage() || {
             accessToken: null,
             mfaSignature: null,
+            mfaRef: null,
             memberId: null,
             esimStatus: null,
             activationCode: null,
@@ -66,6 +67,7 @@ class StateManager {
         this.state = {
             accessToken: null,
             mfaSignature: null,
+            mfaRef: null,
             memberId: null,
             esimStatus: null,
             activationCode: null,
@@ -299,24 +301,27 @@ class MFAHandler {
         });
 
         if (!response.ok) {
-            throw new Error('发送验证码失败');
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(errorData.error || '发送验证码失败');
         }
 
-        return await response.json();
+        const data = await response.json();
+        return data.ref; // 返回 ref 而不是 challengeId
     }
 
-    async verifyMFACode(accessToken, code) {
+    async verifyMFACode(accessToken, code, ref) {
         const response = await fetch(`${CONFIG.API_BASE}/api/mfa-verify`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${accessToken}`
             },
-            body: JSON.stringify({ code })
+            body: JSON.stringify({ code, ref })
         });
 
         if (!response.ok) {
-            throw new Error('验证码验证失败');
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(errorData.error || '验证码验证失败');
         }
 
         const data = await response.json();
@@ -768,7 +773,8 @@ class App {
 
         try {
             this.ui.setButtonLoading(btn, true);
-            await this.mfa.sendMFACode(accessToken, channel);
+            const ref = await this.mfa.sendMFACode(accessToken, channel);
+            this.state.set('mfaRef', ref); // 保存 ref 用于后续验证
             this.ui.showElement('mfa-code-section');
             this.ui.showAlert(`验证码已发送到您的${channel === 'EMAIL' ? '邮箱' : '手机'}`, 'success');
         } catch (error) {
@@ -782,15 +788,21 @@ class App {
         const btn = document.getElementById('verify-mfa-btn');
         const code = document.getElementById('mfa-code').value.trim();
         const accessToken = this.state.get('accessToken');
+        const mfaRef = this.state.get('mfaRef');
 
         if (!code) {
             this.ui.showAlert('请输入验证码', 'warning');
             return;
         }
 
+        if (!mfaRef) {
+            this.ui.showAlert('请先发送验证码', 'warning');
+            return;
+        }
+
         try {
             this.ui.setButtonLoading(btn, true);
-            const mfaSignature = await this.mfa.verifyMFACode(accessToken, code);
+            const mfaSignature = await this.mfa.verifyMFACode(accessToken, code, mfaRef);
             this.state.set('mfaSignature', mfaSignature);
 
             // 获取会员信息

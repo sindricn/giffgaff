@@ -18,8 +18,9 @@ const CONFIG = {
 
 // Giffgaff API 端点（API 代理模式）
 const GIFFGAFF_API = {
-    GRAPHQL_URL: 'https://publicapi.giffgaff.com/graphql',
-    MFA_URL: 'https://api.giffgaff.com/v1/mfa'
+    GRAPHQL_URL: 'https://publicapi.giffgaff.com/gateway/graphql',
+    MFA_CHALLENGE_URL: 'https://id.giffgaff.com/v4/mfa/challenge/me',
+    MFA_VALIDATION_URL: 'https://id.giffgaff.com/v4/mfa/validation'
 };
 
 /**
@@ -268,46 +269,57 @@ async function handleMFAChallenge(request, env) {
     const { channel } = await request.json();
     const accessToken = request.headers.get('Authorization')?.replace('Bearer ', '');
 
-    const response = await fetch(`${GIFFGAFF_API.MFA_URL}/challenge`, {
+    const response = await fetch(GIFFGAFF_API.MFA_CHALLENGE_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({
-            channel: channel,
-            action: 'SIM_SWAP'
+            source: 'esim',
+            preferredChannels: [channel || 'EMAIL']
         })
     });
 
     if (!response.ok) {
-        throw new Error('Failed to send MFA code');
+        const errorText = await response.text();
+        console.error('MFA challenge failed:', errorText);
+        return jsonResponse({
+            error: 'Failed to send MFA code',
+            details: errorText
+        }, response.status);
     }
 
     const data = await response.json();
-    return jsonResponse({ success: true, challengeId: data.challengeId });
+    return jsonResponse({ success: true, ref: data.ref });
 }
 
 /**
  * 验证MFA代码
  */
 async function handleMFAVerify(request, env) {
-    const { code } = await request.json();
+    const { code, ref } = await request.json();
     const accessToken = request.headers.get('Authorization')?.replace('Bearer ', '');
 
-    const response = await fetch(`${GIFFGAFF_API.MFA_URL}/verify`, {
+    const response = await fetch(GIFFGAFF_API.MFA_VALIDATION_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({
+            ref: ref,
             code: code
         })
     });
 
     if (!response.ok) {
-        throw new Error('MFA verification failed');
+        const errorText = await response.text();
+        console.error('MFA verification failed:', errorText);
+        return jsonResponse({
+            error: 'MFA verification failed',
+            details: errorText
+        }, response.status);
     }
 
     const data = await response.json();
@@ -322,19 +334,16 @@ async function handleMemberInfo(request, env) {
     const mfaSignature = request.headers.get('X-MFA-Signature');
 
     const query = `
-        query {
-            viewer {
-                member {
-                    id
-                    username
-                    profile {
-                        firstName
-                        lastName
-                    }
-                    activeMembership {
-                        msisdn
-                    }
-                }
+        query getMemberProfileAndSim {
+            memberProfile {
+                id
+                memberName
+                __typename
+            }
+            sim {
+                phoneNumber
+                status
+                __typename
             }
         }
     `;
@@ -350,22 +359,31 @@ async function handleMemberInfo(request, env) {
     });
 
     if (!response.ok) {
-        throw new Error('Failed to fetch member info');
+        const errorText = await response.text();
+        console.error('Failed to fetch member info:', errorText);
+        return jsonResponse({
+            error: 'Failed to fetch member info',
+            details: errorText
+        }, response.status);
     }
 
     const data = await response.json();
 
     if (data.errors) {
-        throw new Error(data.errors[0].message);
+        return jsonResponse({
+            error: data.errors[0].message,
+            details: data.errors
+        }, 400);
     }
 
-    const member = data.data.viewer.member;
+    const memberProfile = data.data.memberProfile;
+    const sim = data.data.sim;
+
     return jsonResponse({
-        memberId: member.id,
-        username: member.username,
-        firstName: member.profile.firstName,
-        lastName: member.profile.lastName,
-        msisdn: member.activeMembership?.msisdn
+        memberId: memberProfile.id,
+        memberName: memberProfile.memberName,
+        phoneNumber: sim?.phoneNumber,
+        simStatus: sim?.status
     });
 }
 
@@ -377,12 +395,25 @@ async function handleRequestESim(request, env) {
     const accessToken = request.headers.get('Authorization')?.replace('Bearer ', '');
     const mfaSignature = request.headers.get('X-MFA-Signature');
 
+    console.log('Starting eSIM request process for member:', memberId);
+
     // 步骤1: 预订eSIM
     const reserveMutation = `
-        mutation {
-            reserveEsim(input: { memberId: "${memberId}" }) {
-                activationCode
-                ssn
+        mutation reserveESim($input: ESimReservationInput!) {
+            reserveESim: reserveESim(input: $input) {
+                id
+                memberId
+                reservationStartDate
+                reservationEndDate
+                status
+                esim {
+                    ssn
+                    activationCode
+                    deliveryStatus
+                    associatedMemberId
+                    __typename
+                }
+                __typename
             }
         }
     `;
@@ -392,57 +423,164 @@ async function handleRequestESim(request, env) {
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
-            'X-MFA-Signature': mfaSignature
+            'X-MFA-Signature': mfaSignature,
+            'x-gg-app-os': 'iOS',
+            'x-gg-app-os-version': '14',
+            'x-gg-app-build-number': '722',
+            'x-gg-app-device-manufacturer': 'apple',
+            'x-gg-app-device-model': 'iphone15',
+            'x-gg-app-version': '13.21.2'
         },
-        body: JSON.stringify({ query: reserveMutation })
+        body: JSON.stringify({
+            query: reserveMutation,
+            variables: {
+                input: {
+                    memberId: memberId,
+                    userIntent: 'SWITCH'
+                }
+            }
+        })
     });
 
     if (!reserveResponse.ok) {
-        throw new Error('Failed to reserve eSIM');
+        const errorText = await reserveResponse.text();
+        console.error('Failed to reserve eSIM:', errorText);
+        return jsonResponse({
+            error: 'Failed to reserve eSIM',
+            details: errorText
+        }, reserveResponse.status);
     }
 
     const reserveData = await reserveResponse.json();
 
     if (reserveData.errors) {
-        throw new Error(reserveData.errors[0].message);
+        console.error('Reserve eSIM GraphQL errors:', reserveData.errors);
+        return jsonResponse({
+            error: reserveData.errors[0].message,
+            details: reserveData.errors
+        }, 400);
     }
 
-    const { activationCode, ssn } = reserveData.data.reserveEsim;
+    const { ssn, activationCode } = reserveData.data.reserveESim.esim;
+    console.log('eSIM reserved successfully:', { ssn, activationCode });
 
-    // 步骤2: 激活eSIM（自动激活）
-    const activateMutation = `
-        mutation {
-            activateEsim(input: {
-                activationCode: "${activationCode}",
-                ssn: "${ssn}"
-            }) {
-                success
-                lpaString
+    // 步骤2: 交换SIM卡
+    const swapMutation = `
+        mutation SwapSim($activationCode: String!, $mfaSignature: String!) {
+            swapSim(activationCode: $activationCode, mfaSignature: $mfaSignature) {
+                old {
+                    ssn
+                    activationCode
+                    __typename
+                }
+                new {
+                    ssn
+                    activationCode
+                    __typename
+                }
+                __typename
             }
         }
     `;
 
-    const activateResponse = await fetch(GIFFGAFF_API.GRAPHQL_URL, {
+    const swapResponse = await fetch(GIFFGAFF_API.GRAPHQL_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
-            'X-MFA-Signature': mfaSignature
+            'X-MFA-Signature': mfaSignature,
+            'x-gg-app-os': 'iOS',
+            'x-gg-app-os-version': '14',
+            'x-gg-app-build-number': '722',
+            'x-gg-app-device-manufacturer': 'apple',
+            'x-gg-app-device-model': 'iphone15',
+            'x-gg-app-version': '13.21.2'
         },
-        body: JSON.stringify({ query: activateMutation })
+        body: JSON.stringify({
+            query: swapMutation,
+            variables: {
+                activationCode: activationCode,
+                mfaSignature: mfaSignature
+            }
+        })
     });
 
-    if (!activateResponse.ok) {
-        throw new Error('Failed to activate eSIM');
+    if (!swapResponse.ok) {
+        const errorText = await swapResponse.text();
+        console.error('Failed to swap SIM:', errorText);
+        return jsonResponse({
+            error: 'Failed to swap SIM',
+            details: errorText
+        }, swapResponse.status);
     }
 
-    const activateData = await activateResponse.json();
+    const swapData = await swapResponse.json();
 
-    if (activateData.errors) {
-        throw new Error(activateData.errors[0].message);
+    if (swapData.errors) {
+        console.error('Swap SIM GraphQL errors:', swapData.errors);
+        return jsonResponse({
+            error: swapData.errors[0].message,
+            details: swapData.errors
+        }, 400);
     }
 
-    const lpaString = activateData.data.activateEsim.lpaString;
+    console.log('SIM swap successful');
+
+    // 步骤3: 获取eSIM下载令牌
+    const tokenQuery = `
+        query eSimDownloadToken($ssn: String!) {
+            eSimDownloadToken(ssn: $ssn) {
+                id
+                host
+                matchingId
+                lpaString
+                __typename
+            }
+        }
+    `;
+
+    const tokenResponse = await fetch(GIFFGAFF_API.GRAPHQL_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+            'X-MFA-Signature': mfaSignature,
+            'x-gg-app-os': 'iOS',
+            'x-gg-app-os-version': '14',
+            'x-gg-app-build-number': '722',
+            'x-gg-app-device-manufacturer': 'apple',
+            'x-gg-app-device-model': 'iphone15',
+            'x-gg-app-version': '13.21.2'
+        },
+        body: JSON.stringify({
+            query: tokenQuery,
+            variables: {
+                ssn: ssn
+            }
+        })
+    });
+
+    if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        console.error('Failed to get eSIM download token:', errorText);
+        return jsonResponse({
+            error: 'Failed to get eSIM download token',
+            details: errorText
+        }, tokenResponse.status);
+    }
+
+    const tokenData = await tokenResponse.json();
+
+    if (tokenData.errors) {
+        console.error('Get token GraphQL errors:', tokenData.errors);
+        return jsonResponse({
+            error: tokenData.errors[0].message,
+            details: tokenData.errors
+        }, 400);
+    }
+
+    const lpaString = tokenData.data.eSimDownloadToken.lpaString;
+    console.log('eSIM download token retrieved successfully');
 
     return jsonResponse({
         activationCode,

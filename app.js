@@ -259,28 +259,23 @@ class OAuthHandler {
 
         const codeVerifier = sessionStorage.getItem('oauth_code_verifier');
 
-        // 尝试前端直接调用Giffgaff OAuth API（PKCE流程）
-        // PKCE设计用于公共客户端，理论上不需要CLIENT_SECRET
-        const formData = new URLSearchParams({
-            grant_type: 'authorization_code',
-            code: code,
-            redirect_uri: CONFIG.OAUTH.REDIRECT_URI,
-            code_verifier: codeVerifier,
-            client_id: CONFIG.OAUTH.CLIENT_ID
-        });
-
-        console.log('Trying direct OAuth token exchange (PKCE)...');
-        const response = await fetch('https://id.giffgaff.com/auth/oauth/token', {
+        // 使用后端进行 token exchange（需要 client secret）
+        console.log('Using backend token exchange...');
+        const response = await fetch(`${CONFIG.API_BASE}/api/token-exchange`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
+                'Content-Type': 'application/json'
             },
-            body: formData.toString()
+            body: JSON.stringify({
+                code: code,
+                code_verifier: codeVerifier,
+                redirect_uri: CONFIG.OAUTH.REDIRECT_URI
+            })
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Token交换失败: ${errorText}`);
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(`Token交换失败: ${errorData.error || errorData.details || '未知错误'}`);
         }
 
         const data = await response.json();

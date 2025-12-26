@@ -11,9 +11,10 @@ const CORS_HEADERS = {
 };
 
 // OAuth 配置（用于后端 Token Exchange）
-// 注意：CLIENT_SECRET 从环境变量读取，不应硬编码
+// CLIENT_SECRET 来自 Postman 脚本，可直接使用
 const CONFIG = {
-    CLIENT_ID: '4a05bf219b3985647d9b9a3ba610a9ce'
+    CLIENT_ID: '4a05bf219b3985647d9b9a3ba610a9ce',
+    CLIENT_SECRET: 'OQv4cfiyol8TvCW4yiLGj0c1AkTR3N2JfRzq7XGqMxk='
 };
 
 // Giffgaff API 端点（API 代理模式）
@@ -134,35 +135,21 @@ async function handleTokenExchange(request, env) {
         }
 
         const clientId = CONFIG.CLIENT_ID;
-        // 从环境变量读取 CLIENT_SECRET（原始 UUID 格式）
-        const clientSecret = env.GIFFGAFF_CLIENT_SECRET;
+        // 优先使用环境变量，否则使用默认配置（来自 Postman 脚本）
+        const clientSecret = env.GIFFGAFF_CLIENT_SECRET || CONFIG.CLIENT_SECRET;
 
-        console.log('Environment check:');
-        console.log('- env object exists:', !!env);
-        console.log('- CLIENT_SECRET exists:', !!clientSecret);
-        console.log('- CLIENT_SECRET type:', typeof clientSecret);
-        console.log('- CLIENT_SECRET value (masked):', clientSecret ? clientSecret.substring(0, 4) + '****' + clientSecret.substring(clientSecret.length - 4) : 'undefined');
-
-        if (!clientSecret) {
-            console.error('GIFFGAFF_CLIENT_SECRET environment variable not set');
-            return jsonResponse({
-                error: 'Server configuration error',
-                details: 'GIFFGAFF_CLIENT_SECRET not configured'
-            }, 500);
-        }
+        console.log('OAuth Token Exchange:');
+        console.log('- Using client ID:', clientId);
+        console.log('- Client secret source:', env.GIFFGAFF_CLIENT_SECRET ? 'environment' : 'default config');
+        console.log('- Client secret (masked):', clientSecret.substring(0, 4) + '****' + clientSecret.substring(clientSecret.length - 4));
 
         // 构建 Basic Auth header: Base64(clientId:clientSecret)
         const credentials = `${clientId}:${clientSecret}`;
-        console.log('Credentials string (masked):', clientId + ':' + clientSecret.substring(0, 4) + '****');
-
         const encoder = new TextEncoder();
         const encodedData = encoder.encode(credentials);
         const base64 = btoa(String.fromCharCode(...encodedData));
 
-        console.log('Basic Auth Base64 (first 20 chars):', base64.substring(0, 20) + '...');
-
         const tokenUrl = 'https://id.giffgaff.com/auth/oauth/token';
-
         const formData = new URLSearchParams({
             grant_type: 'authorization_code',
             code: code,
@@ -170,23 +157,7 @@ async function handleTokenExchange(request, env) {
             code_verifier: code_verifier
         });
 
-        console.log('=== Token Exchange Debug Info ===');
-        console.log('URL:', tokenUrl);
-        console.log('ClientID:', clientId);
-        console.log('ClientSecret (first 8 chars):', clientSecret?.substring(0, 8) + '...');
-        console.log('ClientSecret length:', clientSecret?.length);
-        console.log('Authorization header:', `Basic ${base64}`);
-        console.log('Authorization header length:', base64?.length);
-        console.log('Form data string:', formData.toString());
-        console.log('Form data params:', {
-            grant_type: 'authorization_code',
-            code: code?.substring(0, 10) + '... (length: ' + code?.length + ')',
-            redirect_uri: redirect_uri || 'giffgaff://auth/callback/',
-            code_verifier: code_verifier?.substring(0, 10) + '... (length: ' + code_verifier?.length + ')'
-        });
-
         // 调用 Giffgaff OAuth API
-        // 尝试更完整的浏览器headers来绕过Imperva WAF
         const response = await fetch(tokenUrl, {
             method: 'POST',
             headers: {
@@ -205,17 +176,15 @@ async function handleTokenExchange(request, env) {
             body: formData.toString()
         });
 
-        console.log('Response status:', response.status, response.statusText);
-        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        return jsonResponse({
-            error: 'Token exchange failed',
-            details: errorText,
-            status: response.status
-        }, response.status);
-    }
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Token exchange failed:', response.status, errorText);
+            return jsonResponse({
+                error: 'Token exchange failed',
+                details: errorText,
+                status: response.status
+            }, response.status);
+        }
 
         const data = await response.json();
         return jsonResponse(data);

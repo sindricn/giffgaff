@@ -22,13 +22,24 @@ export async function onRequestOptions() {
 
 export async function onRequestPost({ request }) {
     try {
-        const { cookie } = await request.json();
+        console.log('[Verify Cookie] POST request received');
+        console.log('[Verify Cookie] Request method:', request.method);
+        console.log('[Verify Cookie] Request headers:', JSON.stringify([...request.headers]));
+
+        const body = await request.json();
+        console.log('[Verify Cookie] Request body parsed');
+
+        const { cookie } = body;
 
         if (!cookie) {
+            console.error('[Verify Cookie] No cookie provided');
             return jsonResponse({ error: 'Missing cookie' }, 400);
         }
 
+        console.log('[Verify Cookie] Cookie received, length:', cookie.length);
+
         // 使用Cookie调用Giffgaff API验证
+        console.log('[Verify Cookie] Calling Giffgaff API...');
         const response = await fetch(GIFFGAFF_API.GRAPHQL_URL, {
             method: 'POST',
             headers: {
@@ -40,24 +51,32 @@ export async function onRequestPost({ request }) {
             })
         });
 
+        console.log('[Verify Cookie] Giffgaff API response status:', response.status);
+
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Cookie validation failed:', errorText);
+            console.error('[Verify Cookie] Giffgaff API failed');
+            console.error('[Verify Cookie] Status:', response.status);
+            console.error('[Verify Cookie] Response:', errorText);
             return jsonResponse({
                 error: 'Cookie validation failed',
-                details: errorText
+                details: errorText,
+                status: response.status
             }, response.status);
         }
 
         const data = await response.json();
+        console.log('[Verify Cookie] Giffgaff API response received');
 
         if (data.errors) {
-            console.error('Cookie validation errors:', data.errors);
+            console.error('[Verify Cookie] GraphQL errors:', data.errors);
             return jsonResponse({
                 error: 'Invalid cookie',
                 details: data.errors
             }, 400);
         }
+
+        console.log('[Verify Cookie] Cookie validation successful');
 
         // 返回一个临时token（使用 btoa 而不是 Buffer）
         const access_token = btoa(cookie);

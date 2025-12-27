@@ -33,16 +33,21 @@ export async function onRequestPost({ request, env }) {
     try {
         const { code, code_verifier, redirect_uri } = await request.json();
 
+        console.log('[Token Exchange] Starting request');
+        console.log('[Token Exchange] Code present:', !!code);
+        console.log('[Token Exchange] Code verifier present:', !!code_verifier);
+        console.log('[Token Exchange] Redirect URI:', redirect_uri || 'giffgaff://auth/callback/');
+
         if (!code || !code_verifier) {
+            console.error('[Token Exchange] Missing required parameters');
             return jsonResponse({ error: 'Missing code or code_verifier' }, 400);
         }
 
         const clientId = CONFIG.CLIENT_ID;
         const clientSecret = env.GIFFGAFF_CLIENT_SECRET || CONFIG.CLIENT_SECRET;
 
-        console.log('OAuth Token Exchange:');
-        console.log('- Using client ID:', clientId);
-        console.log('- Client secret source:', env.GIFFGAFF_CLIENT_SECRET ? 'environment' : 'default config');
+        console.log('[Token Exchange] Using client ID:', clientId);
+        console.log('[Token Exchange] Client secret source:', env.GIFFGAFF_CLIENT_SECRET ? 'environment' : 'default config');
 
         // 构建 Basic Auth header
         const credentials = `${clientId}:${clientSecret}`;
@@ -79,7 +84,9 @@ export async function onRequestPost({ request, env }) {
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Token exchange failed:', response.status, errorText);
+            console.error('[Token Exchange] Request failed');
+            console.error('[Token Exchange] Status:', response.status);
+            console.error('[Token Exchange] Response:', errorText);
             return jsonResponse({
                 error: 'Token exchange failed',
                 details: errorText,
@@ -88,9 +95,15 @@ export async function onRequestPost({ request, env }) {
         }
 
         const data = await response.json();
+        console.log('[Token Exchange] Success');
+        console.log('[Token Exchange] Access token received:', !!data.access_token);
+        console.log('[Token Exchange] Token type:', data.token_type);
+
         return jsonResponse(data);
     } catch (error) {
-        console.error('Token exchange error:', error);
+        console.error('[Token Exchange] Exception:', error);
+        console.error('[Token Exchange] Error message:', error.message);
+        console.error('[Token Exchange] Stack trace:', error.stack);
         return jsonResponse({
             error: 'Token exchange failed',
             details: error.message

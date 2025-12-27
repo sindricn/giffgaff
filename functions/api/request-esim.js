@@ -26,7 +26,10 @@ export async function onRequestPost({ request }) {
         const accessToken = request.headers.get('Authorization')?.replace('Bearer ', '');
         const mfaSignature = request.headers.get('X-MFA-Signature');
 
-        console.log('Starting eSIM request process for member:', memberId);
+        console.log('[Request eSIM] Starting eSIM request process');
+        console.log('[Request eSIM] Member ID:', memberId);
+        console.log('[Request eSIM] Access token present:', !!accessToken);
+        console.log('[Request eSIM] MFA signature present:', !!mfaSignature);
 
         // 步骤1: 预订eSIM
         const reserveMutation = `
@@ -79,17 +82,20 @@ export async function onRequestPost({ request }) {
 
         if (!reserveResponse.ok) {
             const errorText = await reserveResponse.text();
-            console.error('Failed to reserve eSIM:', errorText);
+            console.error('[Request eSIM] Reserve failed');
+            console.error('[Request eSIM] Reserve status:', reserveResponse.status);
+            console.error('[Request eSIM] Reserve response:', errorText);
             return jsonResponse({
                 error: 'Failed to reserve eSIM',
-                details: errorText
+                details: errorText,
+                status: reserveResponse.status
             }, reserveResponse.status);
         }
 
         const reserveData = await reserveResponse.json();
 
         if (reserveData.errors) {
-            console.error('Reserve eSIM GraphQL errors:', reserveData.errors);
+            console.error('[Request eSIM] Reserve GraphQL errors:', reserveData.errors);
             return jsonResponse({
                 error: reserveData.errors[0].message,
                 details: reserveData.errors
@@ -97,7 +103,9 @@ export async function onRequestPost({ request }) {
         }
 
         const { ssn, activationCode } = reserveData.data.reserveESim.esim;
-        console.log('eSIM reserved successfully');
+        console.log('[Request eSIM] Step 1: eSIM reserved successfully');
+        console.log('[Request eSIM] SSN:', ssn);
+        console.log('[Request eSIM] Activation code:', activationCode);
 
         // 步骤2: 交换SIM卡
         const swapMutation = `
@@ -137,24 +145,27 @@ export async function onRequestPost({ request }) {
 
         if (!swapResponse.ok) {
             const errorText = await swapResponse.text();
-            console.error('Failed to swap SIM:', errorText);
+            console.error('[Request eSIM] Swap failed');
+            console.error('[Request eSIM] Swap status:', swapResponse.status);
+            console.error('[Request eSIM] Swap response:', errorText);
             return jsonResponse({
                 error: 'Failed to swap SIM',
-                details: errorText
+                details: errorText,
+                status: swapResponse.status
             }, swapResponse.status);
         }
 
         const swapData = await swapResponse.json();
 
         if (swapData.errors) {
-            console.error('Swap SIM GraphQL errors:', swapData.errors);
+            console.error('[Request eSIM] Swap GraphQL errors:', swapData.errors);
             return jsonResponse({
                 error: swapData.errors[0].message,
                 details: swapData.errors
             }, 400);
         }
 
-        console.log('SIM swap successful');
+        console.log('[Request eSIM] Step 2: SIM swap successful');
 
         // 步骤3: 获取eSIM下载令牌
         const tokenQuery = `
@@ -187,17 +198,20 @@ export async function onRequestPost({ request }) {
 
         if (!tokenResponse.ok) {
             const errorText = await tokenResponse.text();
-            console.error('Failed to get eSIM download token:', errorText);
+            console.error('[Request eSIM] Get token failed');
+            console.error('[Request eSIM] Token status:', tokenResponse.status);
+            console.error('[Request eSIM] Token response:', errorText);
             return jsonResponse({
                 error: 'Failed to get eSIM download token',
-                details: errorText
+                details: errorText,
+                status: tokenResponse.status
             }, tokenResponse.status);
         }
 
         const tokenData = await tokenResponse.json();
 
         if (tokenData.errors) {
-            console.error('Get token GraphQL errors:', tokenData.errors);
+            console.error('[Request eSIM] Get token GraphQL errors:', tokenData.errors);
             return jsonResponse({
                 error: tokenData.errors[0].message,
                 details: tokenData.errors
@@ -205,7 +219,9 @@ export async function onRequestPost({ request }) {
         }
 
         const lpaString = tokenData.data.eSimDownloadToken.lpaString;
-        console.log('eSIM download token retrieved successfully');
+        console.log('[Request eSIM] Step 3: eSIM download token retrieved successfully');
+        console.log('[Request eSIM] LPA string length:', lpaString?.length);
+        console.log('[Request eSIM] Complete! All 3 steps successful');
 
         return jsonResponse({
             activationCode,
@@ -213,7 +229,9 @@ export async function onRequestPost({ request }) {
             lpaString
         });
     } catch (error) {
-        console.error('Request eSIM error:', error);
+        console.error('[Request eSIM] Exception:', error);
+        console.error('[Request eSIM] Error message:', error.message);
+        console.error('[Request eSIM] Stack trace:', error.stack);
         return jsonResponse({
             error: 'Failed to request eSIM',
             details: error.message

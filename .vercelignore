@@ -1,0 +1,7 @@
+functions
+_worker.js
+wrangler.toml
+server.js
+node_modules
+.git
+.env

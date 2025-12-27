@@ -40,12 +40,24 @@ export async function onRequestPost({ request }) {
 
         // 使用Cookie调用Giffgaff API验证
         console.log('[Verify Cookie] Calling Giffgaff API...');
+
+        // 添加完整的浏览器 headers（模拟真实浏览器）
+        const browserHeaders = {
+            'Content-Type': 'application/json',
+            'Cookie': cookie,
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-GB,en;q=0.9',
+            'Origin': 'https://www.giffgaff.com',
+            'Referer': 'https://www.giffgaff.com/',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-site'
+        };
+
         const response = await fetch(GIFFGAFF_API.GRAPHQL_URL, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Cookie': cookie
-            },
+            headers: browserHeaders,
             body: JSON.stringify({
                 query: `query { viewer { member { id } } }`
             })

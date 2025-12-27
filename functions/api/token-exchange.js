@@ -63,22 +63,32 @@ export async function onRequestPost({ request, env }) {
             code_verifier: code_verifier
         });
 
+        // 完整的浏览器伪装 headers（尝试绕过 Incapsula WAF）
+        const browserHeaders = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': `Basic ${base64}`,
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+            'Accept': '*/*',
+            'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br, zstd',
+            'Origin': 'https://www.giffgaff.com',
+            'Referer': 'https://www.giffgaff.com/',
+            'sec-ch-ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-site',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+        };
+
+        console.log('[Token Exchange] Calling Giffgaff OAuth API with full browser headers...');
+
         // 调用 Giffgaff OAuth API
         const response = await fetch(tokenUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': `Basic ${base64}`,
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': '*/*',
-                'Accept-Language': 'en-GB,en;q=0.9',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'Origin': 'https://www.giffgaff.com',
-                'Referer': 'https://www.giffgaff.com/',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'same-site'
-            },
+            headers: browserHeaders,
             body: formData.toString()
         });
 

@@ -728,17 +728,13 @@
                 <h2>选择登录方式</h2>
             </div>
 
-            <div class="tabs">
-                <div class="tab active" data-tab="oauth">OAuth登录</div>
-                <div class="tab" data-tab="cookie">Cookie登录</div>
+            <div class="alert alert-info" style="margin-bottom: 20px;">
+                <span>ℹ️</span>
+                <span><strong>推荐使用 OAuth 登录</strong> - 更安全可靠，且不受防火墙限制</span>
             </div>
 
             <!-- OAuth登录 -->
             <div id="oauth-tab" class="tab-content">
-                <div class="alert alert-info">
-                    <span>ℹ️</span>
-                    <span>推荐使用OAuth登录，更安全可靠</span>
-                </div>
 
                 <button class="btn btn-primary" id="oauth-login-btn">
                     <span>开始OAuth登录</span>
@@ -801,8 +797,8 @@ window.addEventListener('beforeunload', (e) => {
                 </div>
             </div>
 
-            <!-- Cookie登录 -->
-            <div id="cookie-tab" class="tab-content hidden">
+            <!-- Cookie登录 - 已禁用（无法绕过 Incapsula WAF）-->
+            <div id="cookie-tab" class="tab-content hidden" style="display: none !important;">
                 <div class="alert alert-warning">
                     <span>⚠️</span>
                     <span>请确保从官方网站获取Cookie</span>

@@ -61,14 +61,18 @@ export async function onRequestPost({ request }) {
             'x-gg-app-version': '13.21.2'
         };
 
+        // 基础 headers（包含 iOS App User-Agent）
+        const baseHeaders = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+            'X-MFA-Signature': mfaSignature,
+            'User-Agent': 'giffgaff/1332 CFNetwork/1568.300.101 Darwin/24.2.0',
+            ...deviceHeaders
+        };
+
         const reserveResponse = await fetch(GIFFGAFF_API.GRAPHQL_URL, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`,
-                'X-MFA-Signature': mfaSignature,
-                ...deviceHeaders
-            },
+            headers: baseHeaders,
             body: JSON.stringify({
                 query: reserveMutation,
                 variables: {
@@ -128,12 +132,7 @@ export async function onRequestPost({ request }) {
 
         const swapResponse = await fetch(GIFFGAFF_API.GRAPHQL_URL, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`,
-                'X-MFA-Signature': mfaSignature,
-                ...deviceHeaders
-            },
+            headers: baseHeaders,
             body: JSON.stringify({
                 query: swapMutation,
                 variables: {
@@ -182,12 +181,7 @@ export async function onRequestPost({ request }) {
 
         const tokenResponse = await fetch(GIFFGAFF_API.GRAPHQL_URL, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`,
-                'X-MFA-Signature': mfaSignature,
-                ...deviceHeaders
-            },
+            headers: baseHeaders,
             body: JSON.stringify({
                 query: tokenQuery,
                 variables: {

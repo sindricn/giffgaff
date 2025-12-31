@@ -39,6 +39,7 @@ export default async function handler(req, res) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
             'X-MFA-Signature': mfaSignature,
+            'User-Agent': 'giffgaff/1332 CFNetwork/1568.300.101 Darwin/24.2.0',
             ...deviceHeaders
         };
 

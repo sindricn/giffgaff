@@ -196,13 +196,16 @@ class UIController {
 // OAuth处理器
 class OAuthHandler {
     generateCodeVerifier() {
-        const array = new Uint8Array(32);
+        // PKCE RFC 7636: code_verifier 长度应为 43-128 字符
+        // 使用 96 字节生成 128 字符的 Base64URL 编码字符串
+        const array = new Uint8Array(96);
         crypto.getRandomValues(array);
-        // PKCE 规范要求 Base64URL 编码，不是 hex
-        return btoa(String.fromCharCode(...array))
+        const base64 = btoa(String.fromCharCode.apply(null, array));
+        return base64
             .replace(/\+/g, '-')
             .replace(/\//g, '_')
-            .replace(/=/g, '');
+            .replace(/=+$/, '')
+            .substring(0, 128);
     }
 
     async generateCodeChallenge(verifier) {

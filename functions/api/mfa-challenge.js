@@ -29,25 +29,16 @@ export async function onRequestPost({ request }) {
         console.log('[MFA Challenge] Channel:', channel || 'EMAIL');
         console.log('[MFA Challenge] Access token present:', !!accessToken);
 
-        // 浏览器 headers（模拟真实浏览器）
-        const browserHeaders = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Language': 'en-GB,en;q=0.9',
-            'Origin': 'https://www.giffgaff.com',
-            'Referer': 'https://www.giffgaff.com/',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'same-site'
+        // 模拟 iOS App headers（避免触发 WAF）
+        const appHeaders = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+            'User-Agent': 'giffgaff/1332 CFNetwork/1568.300.101 Darwin/24.2.0'
         };
 
         const response = await fetch(GIFFGAFF_API.MFA_CHALLENGE_URL, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`,
-                ...browserHeaders
-            },
+            headers: appHeaders,
             body: JSON.stringify({
                 source: 'esim',
                 preferredChannels: [channel || 'EMAIL']

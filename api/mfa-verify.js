@@ -25,19 +25,15 @@ export default async function handler(req, res) {
 
         console.log('[Vercel MFA Verify] Starting request');
 
-        const browserHeaders = {
+        const appHeaders = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Language': 'en-GB,en;q=0.9',
-            'Origin': 'https://www.giffgaff.com',
-            'Referer': 'https://www.giffgaff.com/'
+            'User-Agent': 'giffgaff/1332 CFNetwork/1568.300.101 Darwin/24.2.0'
         };
 
         const response = await fetch(GIFFGAFF_API.MFA_VALIDATION_URL, {
             method: 'POST',
-            headers: browserHeaders,
+            headers: appHeaders,
             body: JSON.stringify({ ref, code })
         });
 

@@ -63,32 +63,19 @@ export async function onRequestPost({ request, env }) {
             code_verifier: code_verifier
         });
 
-        // 完整的浏览器伪装 headers（尝试绕过 Incapsula WAF）
-        const browserHeaders = {
+        // 模拟 iOS App headers（避免触发 WAF）
+        const appHeaders = {
             'Content-Type': 'application/x-www-form-urlencoded',
             'Authorization': `Basic ${base64}`,
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-            'Accept': '*/*',
-            'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8',
-            'Accept-Encoding': 'gzip, deflate, br, zstd',
-            'Origin': 'https://www.giffgaff.com',
-            'Referer': 'https://www.giffgaff.com/',
-            'sec-ch-ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"Windows"',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'same-site',
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
+            'User-Agent': 'giffgaff/1332 CFNetwork/1568.300.101 Darwin/24.2.0'
         };
 
-        console.log('[Token Exchange] Calling Giffgaff OAuth API with full browser headers...');
+        console.log('[Token Exchange] Calling Giffgaff OAuth API...');
 
         // 调用 Giffgaff OAuth API
         const response = await fetch(tokenUrl, {
             method: 'POST',
-            headers: browserHeaders,
+            headers: appHeaders,
             body: formData.toString()
         });
 

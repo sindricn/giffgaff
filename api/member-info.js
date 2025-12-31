@@ -52,11 +52,7 @@ export default async function handler(req, res) {
         const requestHeaders = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15',
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Language': 'en-GB,en;q=0.9',
-            'Origin': 'https://www.giffgaff.com',
-            'Referer': 'https://www.giffgaff.com/',
+            'User-Agent': 'giffgaff/1332 CFNetwork/1568.300.101 Darwin/24.2.0',
             ...deviceHeaders
         };
 

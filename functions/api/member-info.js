@@ -54,21 +54,12 @@ export async function onRequestPost({ request }) {
             'x-gg-app-version': '13.21.2'
         };
 
-        // 浏览器 headers
-        const browserHeaders = {
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Language': 'en-GB,en;q=0.9',
-            'Origin': 'https://www.giffgaff.com',
-            'Referer': 'https://www.giffgaff.com/'
-        };
-
         // 构建请求 headers（MFA signature 可选）
         const requestHeaders = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
-            ...deviceHeaders,
-            ...browserHeaders
+            'User-Agent': 'giffgaff/1332 CFNetwork/1568.300.101 Darwin/24.2.0',
+            ...deviceHeaders
         };
 
         // 只在有 MFA signature 时添加

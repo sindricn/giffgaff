@@ -198,7 +198,11 @@ class OAuthHandler {
     generateCodeVerifier() {
         const array = new Uint8Array(32);
         crypto.getRandomValues(array);
-        return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+        // PKCE 规范要求 Base64URL 编码，不是 hex
+        return btoa(String.fromCharCode(...array))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
     }
 
     async generateCodeChallenge(verifier) {
